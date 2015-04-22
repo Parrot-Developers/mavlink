@@ -61,6 +61,10 @@ def mavgen(opts, args) :
     for x in xml[:]:
         for i in x.include:
             fname = os.path.join(os.path.dirname(x.filename), i)
+            ## if xml file does not exist try to with mavlink "message_definitions" directory
+            if not os.path.exists(fname):
+                fname = os.path.join(os.path.dirname(__file__), "../..",
+                    "message_definitions", "v%s" % opts.wire_protocol, i)
 
             ## Validate XML file with XSD file if possible.
             if opts.validate:
