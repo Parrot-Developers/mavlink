@@ -1,6 +1,30 @@
 
+
 LOCAL_PATH := $(call my-dir)
-MAVGEN_PYTHON_PATH := $(LOCAL_PATH)
+
+include $(CLEAR_VARS)
+
+LOCAL_HOST_MODULE := mavgen
+
+mavgen_files := \
+	$(call all-files-under,pymavlink,.py) \
+	$(call all-files-under,pymavlink,.xsd) \
+	$(call all-files-under,pymavlink,.h) \
+	$(call all-files-under,message_definitions,.xml)
+
+# Install files in host staging directory
+LOCAL_COPY_FILES := \
+	$(foreach __f,$(mavgen_files), \
+		$(__f):$(HOST_OUT_STAGING)/usr/lib/mavgen/$(__f) \
+	)
+
+# Needed to force a build order of LOCAL_COPY_FILES
+LOCAL_EXPORT_PREREQUISITES := \
+	$(foreach __f,$(mavgen_files), \
+		$(HOST_OUT_STAGING)/usr/lib/mavgen/$(__f) \
+	)
+
+include $(BUILD_CUSTOM)
 
 ###############################################################################
 ## Custom macro that can be used in LOCAL_CUSTOM_MACROS of a module to
@@ -45,7 +69,7 @@ mavgen_dep_file := $$(mavgen_module_build_dir)/$$(notdir $$(mavgen_xml_file)).d
 $$(mavgen_done_file): PRIVATE_OUT_DIR := $$(mavgen_out_dir)
 $$(mavgen_done_file): $$(mavgen_xml_file)
 	@echo "$$(PRIVATE_MODULE): Generating mavlink files from $$(call path-from-top,$3)"
-	$(Q) cd $(MAVGEN_PYTHON_PATH) && python -m pymavlink.tools.mavgen \
+	$(Q) cd $(HOST_OUT_STAGING)/usr/lib/mavgen && python -m pymavlink.tools.mavgen \
 		--lang $1 -o $$(PRIVATE_OUT_DIR) $3
 	@mkdir -p $(TARGET_OUT_STAGING)/usr/share/mavlink
 	$(Q) cp -af $3 $(TARGET_OUT_STAGING)/usr/share/mavlink/$(notdir $3).$$(PRIVATE_MODULE)
@@ -65,6 +89,7 @@ LOCAL_CLEAN_FILES += $$(mavgen_done_file) $$(mavgen_dep_file)
 LOCAL_PREREQUISITES += $$(mavgen_xml_file)
 LOCAL_EXPORT_PREREQUISITES += $$(mavgen_gen_files) $$(mavgen_done_file)
 LOCAL_CUSTOM_TARGETS += $$(mavgen_done_file)
+LOCAL_DEPENDS_HOST_MODULES += host.mavgen
 
 endef
 
