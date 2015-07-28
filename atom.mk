@@ -87,7 +87,7 @@ $$(mavgen_done_file): $$(mavgen_xml_file)
 # Update alchemy variables for the module
 LOCAL_CLEAN_FILES += $$(mavgen_done_file) $$(mavgen_dep_file)
 LOCAL_PREREQUISITES += $$(mavgen_xml_file)
-LOCAL_EXPORT_PREREQUISITES += $$(mavgen_gen_files) $$(mavgen_done_file)
+LOCAL_EXPORT_PREREQUISITES += $$(mavgen_done_file)
 LOCAL_CUSTOM_TARGETS += $$(mavgen_done_file)
 LOCAL_DEPENDS_HOST_MODULES += host.mavgen
 
