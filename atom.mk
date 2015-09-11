@@ -82,6 +82,9 @@ $$(mavgen_done_file): $$(mavgen_xml_file)
 		echo -e "\t@:" >> $$(mavgen_dep_file); \
 	done
 	@touch $$@
+	@mkdir -p $(TARGET_OUT_BUILD)/mavlink/wireshark/plugins
+	@python -m pymavlink.tools.mavgen --lang=WLua \
+		-o $(TARGET_OUT_BUILD)/mavlink/wireshark/plugins/mymavlink.lua $3
 -include $$(mavgen_dep_file)
 
 # Update alchemy variables for the module
