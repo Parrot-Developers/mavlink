@@ -66,7 +66,7 @@ mavgen_dep_file := $$(mavgen_module_build_dir)/$$(notdir $$(mavgen_xml_file)).d
 # Actual generation rule
 # The copy of xml is staging is done in 2 steps because several modules could use
 # the same xml the move ensure atomicity of the copy.
-$$(mavgen_done_file): PRIVATE_OUT_DIR := $$(mavgen_out_dir)
+$$(mavgen_done_file): PRIVATE_OUT_DIR := $$(mavgen_out_dir)/mavlink
 $$(mavgen_done_file): $$(mavgen_xml_file)
 	@echo "$$(PRIVATE_MODULE): Generating mavlink files from $$(call path-from-top,$3)"
 	$(Q) cd $(HOST_OUT_STAGING)/usr/lib/mavgen && python -m pymavlink.tools.mavgen \
@@ -93,6 +93,7 @@ LOCAL_PREREQUISITES += $$(mavgen_xml_file)
 LOCAL_EXPORT_PREREQUISITES += $$(mavgen_done_file)
 LOCAL_CUSTOM_TARGETS += $$(mavgen_done_file)
 LOCAL_DEPENDS_HOST_MODULES += host.mavgen
+LOCAL_EXPORT_C_INCLUDES += $$(mavgen_out_dir)
 
 endef
 
