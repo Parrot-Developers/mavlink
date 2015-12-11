@@ -93,7 +93,7 @@ LOCAL_PREREQUISITES += $$(mavgen_xml_file)
 LOCAL_EXPORT_PREREQUISITES += $$(mavgen_done_file)
 LOCAL_CUSTOM_TARGETS += $$(mavgen_done_file)
 LOCAL_DEPENDS_HOST_MODULES += host.mavgen
-LOCAL_EXPORT_C_INCLUDES += $$(mavgen_out_dir)
+LOCAL_C_INCLUDES += $$(mavgen_out_dir)
 
 endef
 
