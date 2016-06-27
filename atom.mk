@@ -36,7 +36,7 @@ include $(BUILD_CUSTOM)
 ## Note : no 'global' variable shall be used except the ones defined by
 ## alchemy (TARGET_XXX and HOST_XXX variables). Otherwise the macro will no
 ## work when integrated in a SDK (using local-register-custom-macro).
-## Note : rules shoud NOT use any variables defined in the context of the
+## Note : rules should NOT use any variables defined in the context of the
 ## macro (for the same reason PRIVATE_XXX variables shall be used in place of
 ## LOCAL_XXX variables).
 ## Note : if you need a script or a binary, please install it in host staging
@@ -67,6 +67,7 @@ mavgen_dep_file := $$(mavgen_module_build_dir)/$$(notdir $$(mavgen_xml_file)).d
 # The copy of xml is staging is done in 2 steps because several modules could use
 # the same xml the move ensure atomicity of the copy.
 $$(mavgen_done_file): PRIVATE_OUT_DIR := $$(mavgen_out_dir)/mavlink
+$$(mavgen_done_file): PRIVATE_DEP_FILE := $$(mavgen_dep_file)
 $$(mavgen_done_file): $$(mavgen_xml_file)
 	@echo "$$(PRIVATE_MODULE): Generating mavlink files from $$(call path-from-top,$3)"
 	$(Q) cd $(HOST_OUT_STAGING)/usr/lib/mavgen && python -m pymavlink.tools.mavgen \
@@ -76,10 +77,10 @@ $$(mavgen_done_file): $$(mavgen_xml_file)
 	$(Q) mv -f $(TARGET_OUT_STAGING)/usr/share/mavlink/$(notdir $3).$$(PRIVATE_MODULE) \
 		$(TARGET_OUT_STAGING)/usr/share/mavlink/$(notdir $3)
 	@mkdir -p $$(dir $$@)
-	@:>$$(mavgen_dep_file)
+	@:>$$(PRIVATE_DEP_FILE)
 	@for header in $$$$(find $$(PRIVATE_OUT_DIR) -name '*.h'); do \
-		echo "$$$${header}: $$(mavgen_done_file)" >> $$(mavgen_dep_file); \
-		echo -e "\t@:" >> $$(mavgen_dep_file); \
+		echo "$$$${header}: $$@" >> $$(PRIVATE_DEP_FILE); \
+		echo -e "\t@:" >> $$(PRIVATE_DEP_FILE); \
 	done
 	@touch $$@
 	@mkdir -p $(TARGET_OUT_BUILD)/mavlink/wireshark/plugins
