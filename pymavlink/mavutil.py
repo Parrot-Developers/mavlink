@@ -7,7 +7,7 @@ Released under GNU GPL version 3 or later
 '''
 
 import socket, math, struct, time, os, fnmatch, array, sys, errno
-import select
+import select, mavexpression
 
 # adding these extra imports allows pymavlink to be used directly with pyinstaller
 # without having complex spec files. To allow for installs that don't have ardupilotmega
@@ -21,17 +21,6 @@ except Exception:
 # maximum packet length for a single receive call - use the UDP limit
 UDP_MAX_PACKET_LEN = 65535
 
-'''
-Support having a $HOME/.pymavlink/mavextra.py for extra graphing functions
-'''
-home = os.getenv('HOME')
-if home is not None:
-    extra = os.path.join(home, '.pymavlink', 'mavextra.py')
-    if os.path.exists(extra):
-        import imp
-        mavuser = imp.load_source('pymavlink.mavuser', extra)
-        from pymavlink.mavuser import *
-
 # Store the MAVLink library for the currently-selected dialect
 # (set by set_dialect())
 mavlink = None
@@ -43,23 +32,24 @@ mavfile_global = None
 # If the caller hasn't specified a particular native/legacy version, use this
 default_native = False
 
+# link_id used for signing
+global_link_id = 0
+
 # Use a globally-set MAVLink dialect if one has been specified as an environment variable.
 if not 'MAVLINK_DIALECT' in os.environ:
     os.environ['MAVLINK_DIALECT'] = 'ardupilotmega'
 
 def mavlink10():
-    '''return True if using MAVLink 1.0'''
+    '''return True if using MAVLink 1.0 or later'''
     return not 'MAVLINK09' in os.environ
+
+def mavlink20():
+    '''return True if using MAVLink 2.0'''
+    return 'MAVLINK20' in os.environ
 
 def evaluate_expression(expression, vars):
     '''evaluation an expression'''
-    try:
-        v = eval(expression, globals(), vars)
-    except NameError:
-        return None
-    except ZeroDivisionError:
-        return None
-    return v
+    return mavexpression.evaluate_expression(expression, vars)
 
 def evaluate_condition(condition, vars):
     '''evaluation a conditional (boolean) statement'''
@@ -87,7 +77,10 @@ def set_dialect(dialect):
     '''
     global mavlink, current_dialect
     from .generator import mavparse
-    if mavlink is None or mavlink.WIRE_PROTOCOL_VERSION == "1.0" or not 'MAVLINK09' in os.environ:
+    if 'MAVLINK20' in os.environ:
+        wire_protocol = mavparse.PROTOCOL_2_0
+        modname = "pymavlink.dialects.v20." + dialect
+    elif mavlink is None or mavlink.WIRE_PROTOCOL_VERSION == "1.0" or not 'MAVLINK09' in os.environ:
         wire_protocol = mavparse.PROTOCOL_1_0
         modname = "pymavlink.dialects.v10." + dialect
     else:
@@ -119,7 +112,7 @@ class mavfile(object):
         self.fd = fd
         self.address = address
         self.messages = { 'MAV' : self }
-        if mavlink.WIRE_PROTOCOL_VERSION == "1.0":
+        if float(mavlink.WIRE_PROTOCOL_VERSION) >= 1:
             self.messages['HOME'] = mavlink.MAVLink_gps_raw_int_message(0,0,0,0,0,0,0,0,0,0)
             mavlink.MAVLink_waypoint_message = mavlink.MAVLink_mission_item_message
         else:
@@ -166,7 +159,7 @@ class mavfile(object):
             magic = ord(buf[0])
         except:
             magic = buf[0]
-        if not magic in [ 85, 254 ]:
+        if not magic in [ 85, 254, 253 ]:
             return
         self.first_byte = False
         if self.WIRE_PROTOCOL_VERSION == "0.9" and magic == 254:
@@ -174,8 +167,12 @@ class mavfile(object):
             set_dialect(current_dialect)
         elif self.WIRE_PROTOCOL_VERSION == "1.0" and magic == 85:
             self.WIRE_PROTOCOL_VERSION = "0.9"
-            set_dialect(current_dialect)
             os.environ['MAVLINK09'] = '1'
+            set_dialect(current_dialect)
+        elif self.WIRE_PROTOCOL_VERSION != "2.0" and magic == 253:
+            self.WIRE_PROTOCOL_VERSION = "2.0"
+            os.environ['MAVLINK20'] = '1'
+            set_dialect(current_dialect)
         else:
             return
         # switch protocol 
@@ -264,7 +261,7 @@ class mavfile(object):
         if type == 'HEARTBEAT' and msg.get_srcComponent() != mavlink.MAV_COMP_ID_GIMBAL:
             self.target_system = msg.get_srcSystem()
             self.target_component = msg.get_srcComponent()
-            if mavlink.WIRE_PROTOCOL_VERSION == '1.0' and msg.type != mavlink.MAV_TYPE_GCS:
+            if float(mavlink.WIRE_PROTOCOL_VERSION) >= 1 and msg.type != mavlink.MAV_TYPE_GCS:
                 self.flightmode = mode_string_v10(msg)
                 self.mav_type = msg.type
                 self.base_mode = msg.base_mode
@@ -284,6 +281,14 @@ class mavfile(object):
                 self.messages['HOME'] = msg
         for hook in self.message_hooks:
             hook(self, msg)
+
+        if (msg.get_signed() and
+            self.mav.signing.link_id == 0 and
+            msg.get_link_id() != 0 and
+            self.target_system == msg.get_srcSystem() and
+            self.target_component == msg.get_srcComponent()):
+            # change to link_id from incoming packet
+            self.mav.signing.link_id = msg.get_link_id()
 
 
     def packet_loss(self):
@@ -357,8 +362,12 @@ class mavfile(object):
         return evaluate_condition(condition, self.messages)
 
     def mavlink10(self):
-        '''return True if using MAVLink 1.0'''
-        return self.WIRE_PROTOCOL_VERSION == "1.0"
+        '''return True if using MAVLink 1.0 or later'''
+        return float(self.WIRE_PROTOCOL_VERSION) >= 1
+
+    def mavlink20(self):
+        '''return True if using MAVLink 2.0 or later'''
+        return float(self.WIRE_PROTOCOL_VERSION) >= 2
 
     def setup_logfile(self, logfile, mode='w'):
         '''start logging to the given logfile, with timestamps'''
@@ -488,6 +497,7 @@ class mavfile(object):
                         mavlink.MAV_TYPE_HELICOPTER,
                         mavlink.MAV_TYPE_HEXAROTOR,
                         mavlink.MAV_TYPE_OCTOROTOR,
+                        mavlink.MAV_TYPE_COAXIAL,
                         mavlink.MAV_TYPE_TRICOPTER]:
             map = mode_mapping_acm
         if mav_type == mavlink.MAV_TYPE_FIXED_WING:
@@ -702,6 +712,34 @@ class mavfile(object):
             return default
         return self.params[name]
 
+    def setup_signing(self, secret_key, sign_outgoing=True, allow_unsigned_callback=None, initial_timestamp=None, link_id=None):
+        '''setup for MAVLink2 signing'''
+        self.mav.signing.secret_key = secret_key
+        self.mav.signing.sign_outgoing = sign_outgoing
+        self.mav.signing.allow_unsigned_callback = allow_unsigned_callback
+        if link_id is None:
+            # auto-increment the link_id for each link
+            global global_link_id
+            link_id = global_link_id
+            global_link_id = min(global_link_id + 1, 255)
+        self.mav.signing.link_id = link_id
+        if initial_timestamp is None:
+            # timestamp is time since 1/1/2015
+            epoch_offset = 1420070400
+            now = max(time.time(), epoch_offset)
+            initial_timestamp = now - epoch_offset
+            initial_timestamp = int(initial_timestamp * 100 * 1000)
+        # initial_timestamp is in 10usec units
+        self.mav.signing.timestamp = initial_timestamp
+
+    def disable_signing(self):
+        '''disable MAVLink2 signing'''
+        self.mav.signing.secret_key = None
+        self.mav.signing.sign_outgoing = False
+        self.mav.signing.allow_unsigned_callback = None
+        self.mav.signing.link_id = 0
+        self.mav.signing.timestamp = 0
+
 def set_close_on_exec(fd):
     '''set the clone on exec flag on a file descriptor. Ignore exceptions'''
     try:
@@ -737,12 +775,19 @@ class mavserial(mavfile):
 
     def set_rtscts(self, enable):
         '''enable/disable RTS/CTS if applicable'''
-        self.port.setRtsCts(enable)
+        try:
+            self.port.setRtsCts(enable)
+        except Exception:
+            self.port.rtscts = enable
         self.rtscts = enable
 
     def set_baudrate(self, baudrate):
         '''set baudrate'''
-        self.port.setBaudrate(baudrate)
+        try:
+            self.port.setBaudrate(baudrate)
+        except Exception:
+            # for pySerial 3.0, which doesn't have setBaudrate()
+            self.port.baudrate = baudrate
     
     def close(self):
         self.port.close()
@@ -799,6 +844,7 @@ class mavudp(mavfile):
             sys.exit(1)
         self.port = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udp_server = input
+        self.broadcast = False
         if input:
             self.port.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.port.bind((a[0], int(a[1])))
@@ -806,6 +852,7 @@ class mavudp(mavfile):
             self.destination_addr = (a[0], int(a[1]))
             if broadcast:
                 self.port.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                self.broadcast = True
         set_close_on_exec(self.port.fileno())
         self.port.setblocking(0)
         self.last_address = None
@@ -816,11 +863,13 @@ class mavudp(mavfile):
 
     def recv(self,n=None):
         try:
-            data, self.last_address = self.port.recvfrom(UDP_MAX_PACKET_LEN)
+            data, new_addr = self.port.recvfrom(UDP_MAX_PACKET_LEN)
         except socket.error as e:
             if e.errno in [ errno.EAGAIN, errno.EWOULDBLOCK, errno.ECONNREFUSED ]:
                 return ""
             raise
+        if self.udp_server or self.broadcast:
+            self.last_address = new_addr
         return data
 
     def write(self, buf):
@@ -829,6 +878,10 @@ class mavudp(mavfile):
                 if self.last_address:
                     self.port.sendto(buf, self.last_address)
             else:
+                if self.last_address and self.broadcast:
+                    self.destination_addr = self.last_address
+                    self.broadcast = False
+                    self.port.connect(self.destination_addr)
                 self.port.sendto(buf, self.destination_addr)
         except socket.error:
             pass
@@ -837,16 +890,15 @@ class mavudp(mavfile):
         '''message receive routine for UDP link'''
         self.pre_message()
         s = self.recv()
-        if len(s) == 0:
-            return None
-        if self.first_byte:
-            self.auto_mavlink_version(s)
-        msg = self.mav.parse_buffer(s)
-        if msg is not None:
-            for m in msg:
-                self.post_message(m)
-            return msg[0]
-        return None
+        if len(s) > 0:
+            if self.first_byte:
+                self.auto_mavlink_version(s)
+
+        m = self.mav.parse_char(s)
+        if m is not None:
+            self.post_message(m)
+
+        return m
 
 
 class mavtcp(mavfile):
@@ -894,6 +946,63 @@ class mavtcp(mavfile):
         try:
             self.port.send(buf)
         except socket.error:
+            pass
+
+
+class mavtcpin(mavfile):
+    '''a TCP input mavlink socket'''
+    def __init__(self, device, source_system=255, retries=3, use_native=default_native):
+        a = device.split(':')
+        if len(a) != 2:
+            print("TCP ports must be specified as host:port")
+            sys.exit(1)
+        self.listen = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.listen_addr = (a[0], int(a[1]))
+        self.listen.bind(self.listen_addr)
+        self.listen.listen(1)
+        self.listen.setblocking(0)
+        set_close_on_exec(self.listen.fileno())
+        self.listen.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
+        mavfile.__init__(self, self.listen.fileno(), "tcpin:" + device, source_system=source_system, use_native=use_native)
+        self.port = None
+
+    def close(self):
+        self.listen.close()
+
+    def recv(self,n=None):
+        if not self.port:
+            try:
+                (self.port, addr) = self.listen.accept()
+            except Exception:
+                return ''
+            self.port.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1) 
+            self.port.setblocking(0) 
+            set_close_on_exec(self.port.fileno())
+            self.fd = self.port.fileno()
+
+        if n is None:
+            n = self.mav.bytes_needed()
+        try:
+            data = self.port.recv(n)
+        except socket.error as e:
+            if e.errno in [ errno.EAGAIN, errno.EWOULDBLOCK ]:
+                return ""
+            self.port.close()
+            self.port = None
+            self.fd = self.listen.fileno()
+            return ''
+        return data
+
+    def write(self, buf):
+        if self.port is None:
+            return
+        try:
+            self.port.send(buf)
+        except socket.error as e:
+            if e.errno in [ errno.EPIPE ]:
+                self.port.close()
+                self.port = None
+                self.fd = self.listen.fileno()
             pass
 
 
@@ -1066,10 +1175,14 @@ def mavlink_connection(device, baud=115200, source_system=255,
         set_dialect(dialect)
     if device.startswith('tcp:'):
         return mavtcp(device[4:], source_system=source_system, retries=retries, use_native=use_native)
+    if device.startswith('tcpin:'):
+        return mavtcpin(device[6:], source_system=source_system, retries=retries, use_native=use_native)
     if device.startswith('udpin:'):
         return mavudp(device[6:], input=True, source_system=source_system, use_native=use_native)
     if device.startswith('udpout:'):
         return mavudp(device[7:], input=False, source_system=source_system, use_native=use_native)
+    if device.startswith('udpbcast:'):
+        return mavudp(device[9:], input=False, source_system=source_system, use_native=use_native, broadcast=True)
     # For legacy purposes we accept the following syntax and let the caller to specify direction
     if device.startswith('udp:'):
         return mavudp(device[4:], input=input, source_system=source_system, use_native=use_native)
@@ -1287,7 +1400,12 @@ mode_mapping_apm = {
     12 : 'LOITER',
     14 : 'LAND',
     15 : 'GUIDED',
-    16 : 'INITIALISING'
+    16 : 'INITIALISING',
+    17 : 'QSTABILIZE',
+    18 : 'QHOVER',
+    19 : 'QLOITER',
+    20 : 'QLAND',
+    21 : 'QRTL',
     }
 mode_mapping_acm = {
     0 : 'STABILIZE',
@@ -1341,6 +1459,7 @@ def mode_mapping_byname(mav_type):
                     mavlink.MAV_TYPE_HELICOPTER,
                     mavlink.MAV_TYPE_HEXAROTOR,
                     mavlink.MAV_TYPE_OCTOROTOR,
+                    mavlink.MAV_TYPE_COAXIAL,
                     mavlink.MAV_TYPE_TRICOPTER]:
         map = mode_mapping_acm
     if mav_type == mavlink.MAV_TYPE_FIXED_WING:
@@ -1361,6 +1480,7 @@ def mode_mapping_bynumber(mav_type):
                     mavlink.MAV_TYPE_HELICOPTER,
                     mavlink.MAV_TYPE_HEXAROTOR,
                     mavlink.MAV_TYPE_OCTOROTOR,
+                    mavlink.MAV_TYPE_COAXIAL,
                     mavlink.MAV_TYPE_TRICOPTER]:
         map = mode_mapping_acm
     if mav_type == mavlink.MAV_TYPE_FIXED_WING:
