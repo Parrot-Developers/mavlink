@@ -99,3 +99,31 @@ endef
 
 # Register the macro in alchemy
 $(call local-register-custom-macro,mavgen-macro)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := apm-mavlink-ardupilotmega
+LOCAL_MODULE_FILENAME := $(LOCAL_MODULE).done
+LOCAL_DESCRIPTION := Mavlink generated files for boards using the ardupilotmega\
+	messages definition
+LOCAL_CATEGORY_PATH := apm
+
+MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR := $(call local-get-build-dir)
+
+LOCAL_EXPORT_C_INCLUDES := \
+	$(MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR) \
+	$(MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR)/GCS_MAVLink/
+
+# Make sure the -C parameter come after
+# $(LINUX_MAKE_ARGS) to override default value
+$(MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR)/$(LOCAL_MODULE_FILENAME):$(LOCAL_PATH)/message_definitions/v1.0/ardupilotmega.xml
+	@echo "Generating mavlink files for APM:plane ardupilotmega"
+	$(Q) PYTHONPATH=$(PRIVATE_PATH) python \
+		$(PRIVATE_PATH)/pymavlink/tools/mavgen.py --lang=C \
+		--wire-protocol=2.0 \
+		--output=$(MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR)/GCS_MAVLink/include/mavlink/v2.0/ \
+		$<
+	@touch $@
+
+include $(BUILD_CUSTOM)
+
