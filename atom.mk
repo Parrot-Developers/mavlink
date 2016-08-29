@@ -127,3 +127,20 @@ $(MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR)/$(LOCAL_MODULE_FILENAME):$(LOCAL_PATH)/me
 
 include $(BUILD_CUSTOM)
 
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := mavlink-parrot
+LOCAL_MODULE_FILENAME := $(LOCAL_MODULE).done
+LOCAL_DESCRIPTION := Mavlink generated files for Parrot drones
+LOCAL_CATEGORY_PATH := libs
+
+# the two following lines are for generating mavlink C headers
+LOCAL_CUSTOM_MACROS := \
+        mavgen-macro:C,generated,$(LOCAL_PATH)/message_definitions/v1.0/parrot.xml
+
+# export mavlink messages
+LOCAL_EXPORT_C_INCLUDES += \
+        $(call local-get-build-dir)/generated
+
+include $(BUILD_CUSTOM)
+
