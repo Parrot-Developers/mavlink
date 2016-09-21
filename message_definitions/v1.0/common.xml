@@ -107,13 +107,13 @@
                     <description>Octorotor</description>
                </entry>
                <entry value="15" name="MAV_TYPE_TRICOPTER">
-                    <description>Octorotor</description>
+                    <description>Tricopter</description>
                </entry>
                <entry value="16" name="MAV_TYPE_FLAPPING_WING">
                     <description>Flapping wing</description>
                </entry>
                <entry value="17" name="MAV_TYPE_KITE">
-                    <description>Flapping wing</description>
+                    <description>Kite</description>
                </entry>
                <entry value="18" name="MAV_TYPE_ONBOARD_CONTROLLER">
                     <description>Onboard companion controller</description>
@@ -1145,6 +1145,18 @@
                    <param index="7">Empty</param>
                </entry>
 
+               <entry name="MAV_CMD_DO_SET_POSITION_YAW_THRUST" value="213">
+                    <description>Sets a desired vehicle turn angle and thrust change</description>
+                    <param index="1">yaw angle to adjust steering by in centidegress</param>
+                    <param index="2">Thrust - normalized to -2 .. 2</param>
+                    <param index="3">Empty</param>
+                    <param index="4">Empty</param>
+                    <param index="5">Empty</param>
+                    <param index="6">Empty</param>
+                    <param index="7">Empty</param>
+               </entry>
+
+
               <entry value="220" name="MAV_CMD_DO_MOUNT_CONTROL_QUAT">
                 <description>Mission command to control a camera or antenna mount, using a quaternion as reference.</description>
                 <param index="1">q1 - quaternion param #1, w (1 in null-rotation)</param>
@@ -1975,6 +1987,9 @@
               </entry>
               <entry value="4096" name="MAV_PROTOCOL_CAPABILITY_COMPASS_CALIBRATION">
                   <description>Autopilot supports onboard compass calibration.</description>
+              </entry>
+              <entry value="8192" name="MAV_PROTOCOL_CAPABILITY_MAVLINK2">
+                  <description>Autopilot supports mavlink version 2.</description>
               </entry>
           </enum>
           <enum name="MAV_ESTIMATOR_TYPE">
@@ -2956,6 +2971,13 @@
                <field type="uint16_t" name="chan11_raw">RC channel 11 value, in microseconds</field>
                <field type="uint16_t" name="chan12_raw">RC channel 12 value, in microseconds</field>
                <field type="uint8_t" name="rssi">Receive signal strength indicator, 0: 0%, 255: 100%</field>
+          </message>
+          <message id="93" name="HIL_ACTUATOR_CONTROLS">
+               <description>Sent from autopilot to simulation. Hardware in the loop control outputs (replacement for HIL_CONTROLS)</description>
+               <field name="time_usec" type="uint64_t">Timestamp (microseconds since UNIX epoch or microseconds since system boot)</field>
+               <field name="controls" type="float[16]">Control outputs -1 .. 1. Channel assignment depends on the simulated hardware.</field>
+               <field name="mode" type="uint8_t">System mode (MAV_MODE), includes arming state.</field>
+               <field name="flags" type="uint64_t">Flags as bitfield, reserved for future use.</field>
           </message>
           <message id="100" name="OPTICAL_FLOW">
                <description>Optical flow from a flow sensor (e.g. optical mouse sensor)</description>
