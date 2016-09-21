@@ -1,30 +1,4 @@
-
-
 LOCAL_PATH := $(call my-dir)
-
-include $(CLEAR_VARS)
-
-LOCAL_HOST_MODULE := mavgen
-
-mavgen_files := \
-	$(call all-files-under,pymavlink,.py) \
-	$(call all-files-under,pymavlink,.xsd) \
-	$(call all-files-under,pymavlink,.h) \
-	$(call all-files-under,message_definitions,.xml)
-
-# Install files in host staging directory
-LOCAL_COPY_FILES := \
-	$(foreach __f,$(mavgen_files), \
-		$(__f):$(HOST_OUT_STAGING)/usr/lib/mavgen/$(__f) \
-	)
-
-# Needed to force a build order of LOCAL_COPY_FILES
-LOCAL_EXPORT_PREREQUISITES := \
-	$(foreach __f,$(mavgen_files), \
-		$(HOST_OUT_STAGING)/usr/lib/mavgen/$(__f) \
-	)
-
-include $(BUILD_CUSTOM)
 
 ###############################################################################
 ## Custom macro that can be used in LOCAL_CUSTOM_MACROS of a module to
@@ -110,6 +84,8 @@ LOCAL_CATEGORY_PATH := apm
 
 MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR := $(call local-get-build-dir)
 
+LOCAL_DEPENDS_HOST_MODULES := host.mavgen
+
 LOCAL_EXPORT_C_INCLUDES := \
 	$(MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR) \
 	$(MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR)/GCS_MAVLink/
@@ -119,7 +95,7 @@ LOCAL_EXPORT_C_INCLUDES := \
 $(MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR)/$(LOCAL_MODULE_FILENAME):$(LOCAL_PATH)/message_definitions/v1.0/ardupilotmega.xml
 	@echo "Generating mavlink files for APM:plane ardupilotmega"
 	$(Q) PYTHONPATH=$(PRIVATE_PATH) python \
-		$(PRIVATE_PATH)/pymavlink/tools/mavgen.py --lang=C \
+		$(HOST_OUT_STAGING)/usr/lib/mavgen/tools/mavgen.py --lang=C \
 		--wire-protocol=2.0 \
 		--output=$(MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR)/GCS_MAVLink/include/mavlink/v2.0/ \
 		$<
