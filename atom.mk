@@ -94,9 +94,9 @@ LOCAL_EXPORT_C_INCLUDES := \
 # $(LINUX_MAKE_ARGS) to override default value
 $(MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR)/$(LOCAL_MODULE_FILENAME):$(LOCAL_PATH)/message_definitions/v1.0/ardupilotmega.xml
 	@echo "Generating mavlink files for APM:plane ardupilotmega"
-	$(Q) PYTHONPATH=$(PRIVATE_PATH) python \
-		$(HOST_OUT_STAGING)/usr/lib/mavgen/tools/mavgen.py --lang=C \
-		--wire-protocol=2.0 \
+	$(Q) PYTHON_PATH=$(HOST_OUT_STAGING)/usr/lib/mavgen && \
+		$(HOST_OUT_STAGING)/usr/lib/mavgen/pymavlink/tools/mavgen.py \
+		--lang=C --wire-protocol=2.0 \
 		--output=$(MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR)/GCS_MAVLink/include/mavlink/v2.0/ \
 		$<
 	@touch $@
