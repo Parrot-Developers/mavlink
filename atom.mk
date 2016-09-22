@@ -66,7 +66,7 @@ $$(mavgen_done_file): $$(mavgen_xml_file)
 LOCAL_CLEAN_FILES += $$(mavgen_done_file) $$(mavgen_dep_file)
 LOCAL_EXPORT_PREREQUISITES += $$(mavgen_done_file)
 LOCAL_CUSTOM_TARGETS += $$(mavgen_done_file)
-LOCAL_DEPENDS_HOST_MODULES += host.mavgen
+LOCAL_DEPENDS_HOST_MODULES += host.mavgen host.mavlink-common-xml
 LOCAL_C_INCLUDES += $$(mavgen_out_dir)
 
 endef
@@ -103,3 +103,19 @@ $(MAVLINK_APM_ARDUPILOTMEGA_BUILD_DIR)/$(LOCAL_MODULE_FILENAME):$(LOCAL_PATH)/me
 
 include $(BUILD_CUSTOM)
 
+
+include $(CLEAR_VARS)
+
+LOCAL_HOST_MODULE := mavlink-common-xml
+LOCAL_DESCRIPTION := common xml files used by platform specific mavlink xmls
+LOCAL_CATEGORY_PATH := mavlink
+
+mavlink_common_xml_files := \
+	$(call all-files-under,message_definitions,.xml)
+
+LOCAL_COPY_FILES := \
+	$(foreach __f,$(mavlink_common_xml_files), \
+		$(__f):$(HOST_OUT_STAGING)/usr/lib/mavgen/$(__f) \
+	)
+
+include $(BUILD_CUSTOM)
