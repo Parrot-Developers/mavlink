@@ -14,7 +14,17 @@
                     <param index="5">Empty</param>
                     <param index="6">Empty</param>
                     <param index="7">Empty</param>
-               </entry>
+                </entry>
+                <entry value="50001" name="MAV_CMD_SET_STILL_CAPTURE_MODE">
+                    <description>Set the still capture mode</description>
+                    <param index="1">Still capture mode type (see MAV_STILL_CAPTURE_MODE_TYPE)</param>
+                    <param index="2">Timelapse interval in milliseconds if still capture mode type is STILL_CAPTURE_MODE_TYPE_TIMELAPSE. Interval in centimeters between each capture if still capture mode type is STILL_CAPTURE_MODE_TYPE_GPS_POSITION. Overlapping percentage between each capture if still capture mode is STILL_CAPTURE_MODE_TYPE_AUTOMATIC_OVERLAP.</param>
+                    <param index="3">Empty</param>
+                    <param index="4">Empty</param>
+                    <param index="5">Empty</param>
+                    <param index="6">Empty</param>
+                    <param index="7">Empty</param>
+                </entry>
             </enum>
             <enum name="MAV_VIEW_MODE_TYPE">
                <description>Type of the view mode. This is how the vehicle should behave to set its orientation.</description>
@@ -26,6 +36,18 @@
                </entry>
                <entry value="2" name="VIEW_MODE_TYPE_ROI">
                     <description>Vehicle orientation is given by a ROI.</description>
+               </entry>
+            </enum>
+            <enum name="MAV_STILL_CAPTURE_MODE_TYPE">
+               <description>Type of still capture that is performed upon a still capture initiation.</description>
+               <entry value="0" name="STILL_CAPTURE_MODE_TYPE_TIMELAPSE">
+                    <description>Timelapse capture.</description>
+               </entry>
+               <entry value="1" name="STILL_CAPTURE_MODE_TYPE_GPS_POSITION">
+                    <description>Capture according to the GPS position of the vehicle. Images are captured with an equal spacing.</description>
+               </entry>
+               <entry value="2" name="STILL_CAPTURE_MODE_TYPE_AUTOMATIC_OVERLAP">
+                    <description>Capture according to an overlap rate. Images captured will overlap each other by a percentage defined by the overlap rate.</description>
                </entry>
             </enum>
         </enums>
