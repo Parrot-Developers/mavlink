@@ -25,6 +25,16 @@
                     <param index="6">Empty</param>
                     <param index="7">Empty</param>
                 </entry>
+                <entry value="50002" name="MAV_CMD_SET_PHOTO_SENSORS">
+                    <description>Set the photo sensors that are/will be used.</description>
+                    <param index="1">Photo sensors bitfield (see MAV_PHOTO_SENSORS_FLAG)</param>
+                    <param index="2">Empty</param>
+                    <param index="3">Empty</param>
+                    <param index="4">Empty</param>
+                    <param index="5">Empty</param>
+                    <param index="6">Empty</param>
+                    <param index="7">Empty</param>
+                </entry>
             </enum>
             <enum name="MAV_VIEW_MODE_TYPE">
                <description>Type of the view mode. This is how the vehicle should behave to set its orientation.</description>
@@ -48,6 +58,24 @@
                </entry>
                <entry value="2" name="STILL_CAPTURE_MODE_TYPE_AUTOMATIC_OVERLAP">
                     <description>Capture according to an overlap rate. Images captured will overlap each other by a percentage defined by the overlap rate.</description>
+               </entry>
+            </enum>
+            <enum name="MAV_PHOTO_SENSORS_FLAG">
+               <description>These flags encode the photo sensors.</description>
+               <entry value="1" name="MAV_PHOTO_SENSORS_FLAG_RGB">
+                    <description>0x01 RGB sensor.</description>
+               </entry>
+               <entry value="2" name="MAV_PHOTO_SENSORS_FLAG_GREEN_BAND">
+                    <description>0x02 Green band sensor.</description>
+               </entry>
+               <entry value="4" name="MAV_PHOTO_SENSORS_FLAG_RED_BAND">
+                    <description>0x04 Red band sensor.</description>
+               </entry>
+               <entry value="8" name="MAV_PHOTO_SENSORS_FLAG_RED_EDGE_BAND">
+                    <description>0x08 Red-edge band sensor.</description>
+               </entry>
+               <entry value="16" name="MAV_PHOTO_SENSORS_FLAG_NEAR_IR_BAND">
+                    <description>0x10 Near-infrared band sensor.</description>
                </entry>
             </enum>
         </enums>
